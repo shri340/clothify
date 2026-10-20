@@ -1,0 +1,13 @@
+
+node_modules/
+frontend/dist/
+backend/target/
+.env
+.env.*
+!.env.example
+application-local.properties
+.vscode/
+.DS_Store
+
+# Accidental duplicate frontend project
+/clothify/
