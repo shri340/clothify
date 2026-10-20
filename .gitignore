@@ -11,3 +11,5 @@ application-local.properties
 
 # Accidental duplicate frontend project
 /clothify/
+
+backend/startup-error.txt
