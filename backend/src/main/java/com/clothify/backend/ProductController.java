@@ -23,70 +23,70 @@ public class ProductController {
                 "name", "Classic Oversized White T-Shirt",
                 "price", 599,
                 "category", "Men",
-                "image", "https://placehold.co/600x800?text=White+Oversized+Tee"
+                "image", "/images/white-tee.jpg"
             ),
             Map.of(
                 "id", 2,
                 "name", "Classic Oversized Black T-Shirt",
                 "price", 599,
                 "category", "Men",
-                "image", "https://placehold.co/600x800?text=Black+Oversized+Tee"
+                "image", "/images/black-tee.jpg"
             ),
             Map.of(
                 "id", 3,
                 "name", "Premium Cream Hoodie",
                 "price", 1299,
                 "category", "Men",
-                "image", "https://placehold.co/600x800?text=Cream+Hoodie"
+                "image", "/images/cream-hoodie.jpg"
             ),
             Map.of(
                 "id", 4,
                 "name", "Premium Black Hoodie",
                 "price", 1299,
                 "category", "Men",
-                "image", "https://placehold.co/600x800?text=Black+Hoodie"
+                "image", "/images/black-hoodie.jpg"
             ),
             Map.of(
                 "id", 5,
                 "name", "Classic Linen Shirt",
                 "price", 999,
                 "category", "Men",
-                "image", "https://placehold.co/600x800?text=Linen+Shirt"
+                "image", "/images/linen-shirt.jpg"
             ),
             Map.of(
                 "id", 6,
                 "name", "Black Denim Jacket",
                 "price", 1499,
                 "category", "Men",
-                "image", "https://placehold.co/600x800?text=Denim+Jacket"
+                "image", "/images/denim-jacket.jpg"
             ),
             Map.of(
                 "id", 7,
                 "name", "Everyday Cargo Pants",
                 "price", 1199,
                 "category", "Men",
-                "image", "https://placehold.co/600x800?text=Cargo+Pants"
+                "image", "/images/cargo-pants.jpg"
             ),
             Map.of(
                 "id", 8,
                 "name", "Straight Fit Jeans",
                 "price", 1099,
                 "category", "Men",
-                "image", "https://placehold.co/600x800?text=Straight+Fit+Jeans"
+                "image", "/images/straight-jeans.jpg"
             ),
             Map.of(
                 "id", 9,
                 "name", "Classic Navy Polo T-Shirt",
                 "price", 699,
                 "category", "Men",
-                "image", "https://placehold.co/600x800?text=Navy+Polo"
+                "image", "/images/navy-polo.jpg"
             ),
             Map.of(
                 "id", 10,
                 "name", "Black and White Sneakers",
                 "price", 1999,
                 "category", "Footwear",
-                "image", "https://placehold.co/600x800?text=Sneakers"
+                "image", "/images/sneakers.jpg"
             )
         );
     }
