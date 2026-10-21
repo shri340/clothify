@@ -1,8 +1,10 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  "https://clothify-backend-api.onrender.com";
 
 type Product = {
   id: number;
@@ -19,39 +21,63 @@ type CartItem = {
 
 function App() {
   const [products, setProducts] = useState<Product[]>([]);
-const [cart, setCart] = useState<CartItem[]>(() => {
-  try {
-    const savedCart = localStorage.getItem("clothify-cart");
-    return savedCart ? JSON.parse(savedCart) as CartItem[] : [];
-  } catch {
-    return [];
-  }
-});
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    try {
+      const savedCart = localStorage.getItem("clothify-cart");
+      return savedCart ? (JSON.parse(savedCart) as CartItem[]) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
-const [checkoutOpen, setCheckoutOpen] = useState(false);
-const [orderPlaced, setOrderPlaced] = useState(false);
-const [submittingOrder, setSubmittingOrder] = useState(false);
-const [orderId, setOrderId] = useState<number | null>(null);
-const [customerName, setCustomerName] = useState("");
-const [phone, setPhone] = useState("");
-const [address, setAddress] = useState("");
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [submittingOrder, setSubmittingOrder] = useState(false);
+  const [orderId, setOrderId] = useState<number | null>(null);
+  const [confirmedTotal, setConfirmedTotal] = useState(0);
+  const [customerName, setCustomerName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+
+  const checkoutRef = useRef<HTMLDivElement>(null);
+
+  // Load products from the backend.
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/products`)
       .then((response) => {
-        if (!response.ok) throw new Error("Could not load products");
+        if (!response.ok) {
+          throw new Error("Could not load products");
+        }
         return response.json();
       })
       .then((data: Product[]) => setProducts(data))
-      .catch(() =>
-        setError("Unable to load products. Check that the backend is running.")
-      )
+      .catch(() => {
+        setError("Unable to load products. Please try again later.");
+      })
       .finally(() => setLoading(false));
   }, []);
-    useEffect(() => {
+
+  // Save the shopping bag between page refreshes.
+  useEffect(() => {
     localStorage.setItem("clothify-cart", JSON.stringify(cart));
   }, [cart]);
+
+  // Automatically move customers to checkout when it opens.
+  useEffect(() => {
+    if (checkoutOpen) {
+      const timer = window.setTimeout(() => {
+        checkoutRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
+
+      return () => window.clearTimeout(timer);
+    }
+  }, [checkoutOpen]);
 
   const addToCart = (product: Product) => {
     setCart((current) => {
@@ -104,10 +130,80 @@ const [address, setAddress] = useState("");
   const formatPrice = (price: number) =>
     `₹${price.toLocaleString("en-IN")}`;
 
+  const openCheckout = () => {
+    setCartOpen(false);
+    setCheckoutOpen(true);
+    setOrderPlaced(false);
+    setError("");
+  };
+
+  const closeCheckout = () => {
+    setCheckoutOpen(false);
+    setOrderPlaced(false);
+    setOrderId(null);
+    setError("");
+  };
+
+  const handlePlaceOrder = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
+
+    if (submittingOrder || cart.length === 0) {
+      return;
+    }
+
+    setSubmittingOrder(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          customerName: customerName.trim(),
+          phone: phone.trim(),
+          address: address.trim(),
+          items: cart.map((item) => ({
+            id: item.product.id,
+            quantity: item.quantity,
+          })),
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            data.error ||
+            `Could not place order (HTTP ${response.status}).`
+        );
+      }
+
+      setOrderId(data.orderId);
+      setConfirmedTotal(subtotal);
+      setOrderPlaced(true);
+      setCart([]);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not connect to the server. Please try again."
+      );
+    } finally {
+      setSubmittingOrder(false);
+    }
+  };
+
   return (
     <div className="app">
       <header className="navbar">
-        <a className="logo" href="/">CLOTHIFY<span>.</span></a>
+        <a className="logo" href="/">
+          CLOTHIFY<span>.</span>
+        </a>
 
         <nav>
           <a href="#products">Shop</a>
@@ -115,6 +211,7 @@ const [address, setAddress] = useState("");
         </nav>
 
         <button
+          type="button"
           className="cart-trigger"
           onClick={() => setCartOpen(true)}
         >
@@ -125,7 +222,11 @@ const [address, setAddress] = useState("");
       <main>
         <section className="hero">
           <p className="eyebrow">YOUR STYLE, YOUR STORY</p>
-          <h1>Wear what<br />moves you.</h1>
+          <h1>
+            Wear what
+            <br />
+            moves you.
+          </h1>
           <p>Everyday essentials. Effortless style.</p>
           <a className="shop-button" href="#products">
             EXPLORE COLLECTION
@@ -142,7 +243,11 @@ const [address, setAddress] = useState("");
           </div>
 
           {loading && <p>Loading your collection...</p>}
-          {error && <p className="error">{error}</p>}
+          {error && !checkoutOpen && (
+            <p role="alert" className="error">
+              {error}
+            </p>
+          )}
 
           {!loading && !error && (
             <div className="product-grid">
@@ -156,7 +261,10 @@ const [address, setAddress] = useState("");
                   <div className="product-info">
                     <h3>{product.name}</h3>
                     <p className="price">{formatPrice(product.price)}</p>
-                    <button onClick={() => addToCart(product)}>
+                    <button
+                      type="button"
+                      onClick={() => addToCart(product)}
+                    >
                       ADD TO BAG
                     </button>
                   </div>
@@ -174,11 +282,19 @@ const [address, setAddress] = useState("");
       </main>
 
       <footer>© 2026 CLOTHIFY. YOUR STYLE, YOUR STORY.</footer>
-           {checkoutOpen && (
-        <div className="checkout-page">
+
+      {checkoutOpen && (
+        <div className="checkout-page" ref={checkoutRef}>
+          <div className="checkout-scroll-hint" role="status">
+            <span aria-hidden="true">↓</span>
+            <strong>You're almost there!</strong>
+            <span>Complete your delivery details below to place your order.</span>
+          </div>
+
           <button
+            type="button"
             className="back-button"
-            onClick={() => setCheckoutOpen(false)}
+            onClick={closeCheckout}
           >
             ← Back to shopping
           </button>
@@ -187,23 +303,29 @@ const [address, setAddress] = useState("");
             <section className="checkout-card success-card">
               <p className="eyebrow">CLOTHIFY</p>
               <h1>Thank you, {customerName}!</h1>
-             <p>Your order has been saved successfully.</p>
+              <p>Your order has been saved successfully.</p>
 
-{orderId !== null && (
-  <p>
-    Order number: <strong>#{orderId}</strong>
-  </p>
-)}
+              {orderId !== null && (
+                <p>
+                  Order number: <strong>#{orderId}</strong>
+                </p>
+              )}
 
-<p>
-  Order total: <strong>{formatPrice(subtotal)}</strong>
-</p>
+              <p>
+                Order total: <strong>{formatPrice(confirmedTotal)}</strong>
+              </p>
+
               <button
+                type="button"
                 className="checkout-button"
                 onClick={() => {
-                  setCart([]);
                   setCheckoutOpen(false);
                   setOrderPlaced(false);
+                  setOrderId(null);
+                  setCustomerName("");
+                  setPhone("");
+                  setAddress("");
+                  setConfirmedTotal(0);
                 }}
               >
                 CONTINUE SHOPPING
@@ -212,89 +334,21 @@ const [address, setAddress] = useState("");
           ) : (
             <div className="checkout-layout">
               <section className="checkout-card">
-                {orderPlaced && (
-  <div className="checkout-card">
-    <p className="eyebrow">ORDER CONFIRMED</p>
-    <h2>Thank you, {customerName}!</h2>
-    <p>Your order has been saved successfully.</p>
-    {orderId !== null && (
-      <p>Your order number is #{orderId}</p>
-    )}
-    <button
-      type="button"
-      className="checkout-button"
-      onClick={() => {
-        setCheckoutOpen(false);
-        setCartOpen(false);
-        setOrderPlaced(false);
-        setOrderId(null);
-        setCart([]);
-      }}
-    >
-      CONTINUE SHOPPING
-    </button>
-  </div>
-)}
                 <p className="eyebrow">CLOTHIFY CHECKOUT</p>
                 <h1>Almost yours.</h1>
-                <p>Enter your delivery details to review your order.</p>
+                <p>Enter your delivery details to complete your order.</p>
 
-                <form
-                 
-onSubmit={async (event) => {
-  event.preventDefault();
-
-  if (submittingOrder || cart.length === 0) {
-    return;
-  }
-
-  setSubmittingOrder(true);
-  setError("");
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/orders`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        customerName,
-        phone,
-        address,
-        items: cart.map((item) => ({
-          id: item.product.id,
-          quantity: item.quantity,
-        })),
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || data.error || "Could not place order.");
-    }
-
-    setOrderId(data.orderId);
-    setOrderPlaced(true);
-  } catch (err) {
-    setError(
-      err instanceof Error
-        ? err.message
-        : "Could not connect to the server. Please try again."
-    );
-  } finally {
-    setSubmittingOrder(false);
-  }
-}}
-
-                >
+                <form onSubmit={handlePlaceOrder}>
                   <label htmlFor="customerName">Full name</label>
                   <input
                     id="customerName"
                     value={customerName}
-                    onChange={(event) => setCustomerName(event.target.value)}
+                    onChange={(event) =>
+                      setCustomerName(event.target.value)
+                    }
                     required
                     minLength={2}
+                    maxLength={200}
                     autoComplete="name"
                   />
 
@@ -317,26 +371,28 @@ onSubmit={async (event) => {
                     onChange={(event) => setAddress(event.target.value)}
                     required
                     minLength={10}
+                    maxLength={1000}
                     rows={4}
                     autoComplete="street-address"
                   />
 
-                 <button
-  className="checkout-button"
-  type="submit"
-  disabled={submittingOrder || cart.length === 0}
->
-  {submittingOrder ? "SAVING ORDER..." : "PLACE ORDER"}
-</button>
+                  <button
+                    className="checkout-button"
+                    type="submit"
+                    disabled={submittingOrder || cart.length === 0}
+                  >
+                    {submittingOrder ? "SAVING ORDER..." : "PLACE ORDER"}
+                  </button>
                 </form>
+
                 {error && (
-  <p role="alert" className="checkout-note">
-    {error}
-  </p>
-)}
+                  <p role="alert" className="checkout-note">
+                    {error}
+                  </p>
+                )}
 
                 <p className="checkout-note">
-                 Demo checkout only. No payment is processed.
+                  Demo checkout only. No payment is processed.
                 </p>
               </section>
 
@@ -367,7 +423,7 @@ onSubmit={async (event) => {
           )}
         </div>
       )}
-     
+
       {cartOpen && (
         <div
           className="cart-backdrop"
@@ -380,6 +436,7 @@ onSubmit={async (event) => {
             <div className="cart-heading">
               <h2>Your bag ({totalItems})</h2>
               <button
+                type="button"
                 className="close-cart"
                 onClick={() => setCartOpen(false)}
                 aria-label="Close shopping bag"
@@ -392,6 +449,7 @@ onSubmit={async (event) => {
               <div className="empty-cart">
                 <p>Your bag is waiting for something good.</p>
                 <button
+                  type="button"
                   className="continue-shopping"
                   onClick={() => setCartOpen(false)}
                 >
@@ -411,14 +469,20 @@ onSubmit={async (event) => {
 
                         <div className="quantity-controls">
                           <button
-                            onClick={() => changeQuantity(product.id, -1)}
+                            type="button"
+                            onClick={() =>
+                              changeQuantity(product.id, -1)
+                            }
                             aria-label={`Decrease ${product.name} quantity`}
                           >
                             −
                           </button>
                           <span>{quantity}</span>
                           <button
-                            onClick={() => changeQuantity(product.id, 1)}
+                            type="button"
+                            onClick={() =>
+                              changeQuantity(product.id, 1)
+                            }
                             aria-label={`Increase ${product.name} quantity`}
                           >
                             +
@@ -426,6 +490,7 @@ onSubmit={async (event) => {
                         </div>
 
                         <button
+                          type="button"
                           className="remove-item"
                           onClick={() => removeFromCart(product.id)}
                         >
@@ -447,12 +512,9 @@ onSubmit={async (event) => {
                   </div>
                   <p>Shipping and taxes calculated at checkout.</p>
                   <button
+                    type="button"
                     className="checkout-button"
-                    onClick={() => {
-                      setCartOpen(false);
-                      setCheckoutOpen(true);
-                      setOrderPlaced(false);
-                    }}
+                    onClick={openCheckout}
                   >
                     PROCEED TO CHECKOUT
                   </button>
