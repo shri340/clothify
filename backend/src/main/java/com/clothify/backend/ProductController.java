@@ -87,6 +87,36 @@ public class ProductController {
                 "price", 1999,
                 "category", "Footwear",
                 "image", "/images/sneakers.jpg"
+            ),
+
+            // Women's collection
+            Map.of(
+                "id", 11,
+                "name", "Floral Midi Dress",
+                "price", 1299,
+                "category", "Women",
+                "image", "/images/women-floral-dress.jpg"
+            ),
+            Map.of(
+                "id", 12,
+                "name", "Elegant Crop Top",
+                "price", 599,
+                "category", "Women",
+                "image", "/images/women-crop-top.jpg"
+            ),
+            Map.of(
+                "id", 13,
+                "name", "Pleated Midi Skirt",
+                "price", 899,
+                "category", "Women",
+                "image", "/images/women-midi-skirt.jpg"
+            ),
+            Map.of(
+                "id", 14,
+                "name", "High-Waist Trousers",
+                "price", 1099,
+                "category", "Women",
+                "image", "/images/women-trousers.jpg"
             )
         );
     }
