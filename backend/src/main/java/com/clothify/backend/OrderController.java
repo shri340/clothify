@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,22 +17,26 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api")
+@CrossOrigin(origins = "*")
 public class OrderController {
 
     private final CustomerOrderRepository orderRepository;
 
+    /*
+     * Keep these prices synchronized with ProductController.
+     */
     private static final Map<Integer, Integer> PRODUCT_PRICES =
             Map.ofEntries(
-                    Map.entry(1, 999),
-                    Map.entry(2, 1299),
-                    Map.entry(3, 799),
-                    Map.entry(4, 1499),
-                    Map.entry(5, 1999),
-                    Map.entry(6, 599),
-                    Map.entry(7, 899),
+                    Map.entry(1, 599),
+                    Map.entry(2, 599),
+                    Map.entry(3, 1299),
+                    Map.entry(4, 1299),
+                    Map.entry(5, 999),
+                    Map.entry(6, 1499),
+                    Map.entry(7, 1199),
                     Map.entry(8, 1099),
-                    Map.entry(9, 2499),
-                    Map.entry(10, 1799),
+                    Map.entry(9, 699),
+                    Map.entry(10, 1999),
                     Map.entry(11, 1299),
                     Map.entry(12, 599),
                     Map.entry(13, 899),
@@ -49,14 +54,21 @@ public class OrderController {
     public ResponseEntity<?> createOrder(
             @RequestBody Map<String, Object> request) {
 
+        if (request == null) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Order details are required."));
+        }
+
         String name = readText(request.get("name"));
         String phone = readText(request.get("phone"));
         String address = readText(request.get("address"));
 
         if (name.isBlank() || phone.isBlank() || address.isBlank()) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("message",
-                            "Name, phone, and address are required."));
+                    .body(Map.of(
+                            "message",
+                            "Name, phone, and address are required."
+                    ));
         }
 
         Object itemsObject = request.get("items");
@@ -84,29 +96,36 @@ public class OrderController {
 
                 if (quantity < 1 || quantity > 100) {
                     return ResponseEntity.badRequest()
-                            .body(Map.of("message",
-                                    "Quantity must be between 1 and 100."));
+                            .body(Map.of(
+                                    "message",
+                                    "Quantity must be between 1 and 100."
+                            ));
                 }
 
                 Integer price = PRODUCT_PRICES.get(id);
 
                 if (price == null) {
                     return ResponseEntity.badRequest()
-                            .body(Map.of("message",
-                                    "Invalid product ID: " + id));
+                            .body(Map.of(
+                                    "message",
+                                    "Invalid product ID: " + id
+                            ));
                 }
 
-                String size = readText(item.get("size"))
-                        .toUpperCase();
+                String size = readText(item.get("size")).toUpperCase();
 
                 if (!VALID_SIZES.contains(size)) {
                     return ResponseEntity.badRequest()
-                            .body(Map.of("message",
-                                    "A valid clothing size is required."));
+                            .body(Map.of(
+                                    "message",
+                                    "A valid clothing size is required."
+                            ));
                 }
 
                 total = Math.addExact(
-                        total, Math.multiplyExact(price, quantity));
+                        total,
+                        Math.multiplyExact(price, quantity)
+                );
 
                 Map<String, Object> savedItem = new LinkedHashMap<>();
                 savedItem.put("id", id);
@@ -120,10 +139,12 @@ public class OrderController {
             String itemsJson = toJson(savedItems);
 
             CustomerOrder order = new CustomerOrder();
-            order.setName(name);
+
+            // Match the actual CustomerOrder entity field names.
+            order.setCustomerName(name);
             order.setPhone(phone);
             order.setAddress(address);
-            order.setItems(itemsJson);
+            order.setItemsJson(itemsJson);
             order.setTotal(total);
 
             CustomerOrder savedOrder = orderRepository.save(order);
@@ -138,8 +159,10 @@ public class OrderController {
 
         } catch (NumberFormatException | ArithmeticException e) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("message",
-                            "Invalid quantity or product information."));
+                    .body(Map.of(
+                            "message",
+                            "Invalid quantity or product information."
+                    ));
         }
     }
 
@@ -148,8 +171,7 @@ public class OrderController {
     }
 
     /*
-     * Serializes the order items to JSON without requiring ObjectMapper.
-     * Only strings, integers, and maps used above are supported.
+     * Serializes order items to JSON without requiring ObjectMapper.
      */
     private String toJson(List<Map<String, Object>> items) {
         StringBuilder json = new StringBuilder("[");
@@ -171,9 +193,10 @@ public class OrderController {
                 }
 
                 firstField = false;
+
                 json.append('"')
-                    .append(escapeJson(field.getKey()))
-                    .append("\":");
+                        .append(escapeJson(field.getKey()))
+                        .append("\":");
 
                 Object value = field.getValue();
 
@@ -181,8 +204,8 @@ public class OrderController {
                     json.append(value);
                 } else {
                     json.append('"')
-                        .append(escapeJson(String.valueOf(value)))
-                        .append('"');
+                            .append(escapeJson(String.valueOf(value)))
+                            .append('"');
                 }
             }
 
@@ -208,7 +231,9 @@ public class OrderController {
                 case '\t' -> escaped.append("\\t");
                 default -> {
                     if (ch < 0x20) {
-                        escaped.append(String.format("\\u%04x", (int) ch));
+                        escaped.append(
+                                String.format("\\u%04x", (int) ch)
+                        );
                     } else {
                         escaped.append(ch);
                     }
