@@ -1,3 +1,4 @@
+
 /* =========================================
    CLOTHIFY - GLOBAL STYLES
 ========================================= */
@@ -174,6 +175,7 @@ textarea:focus-visible {
 }
 
 /* FIX: Dark navy hero and checkout headings */
+
 .hero h1,
 .checkout-card h1 {
   margin: 0;
@@ -1156,7 +1158,6 @@ p.checkout-note[role="alert"] {
 
 /* =========================================
    CLOTHIFY — PREMIUM STOREFRONT UPGRADE
-   Add this block at the bottom of App.css
 ========================================= */
 
 :root {
@@ -1167,6 +1168,7 @@ p.checkout-note[role="alert"] {
 }
 
 /* Smooth, refined overall appearance */
+
 body {
   background: #fcfbf8;
   color: #252821;
@@ -1187,6 +1189,7 @@ button {
 }
 
 /* Premium sticky navigation */
+
 .navbar {
   min-height: 80px;
   padding: 16px clamp(20px, 6vw, 100px);
@@ -1235,6 +1238,7 @@ button {
 }
 
 /* Editorial-style hero */
+
 .hero {
   position: relative;
   isolation: isolate;
@@ -1301,6 +1305,7 @@ button {
 }
 
 /* Product section hierarchy */
+
 .products-section {
   padding: clamp(52px, 7vw, 90px) clamp(20px, 6vw, 100px);
   background: #fcfbf8;
@@ -1325,6 +1330,7 @@ button {
 }
 
 /* Elegant product cards */
+
 .product-grid {
   gap: 30px 22px;
 }
@@ -1395,7 +1401,8 @@ button {
   color: #fff;
 }
 
-/* Collection filters, if present in the current JSX */
+/* Collection filters */
+
 .collection-filters {
   display: flex;
   flex-wrap: wrap;
@@ -1424,6 +1431,7 @@ button {
 }
 
 /* Loading skeletons match the refined cards */
+
 .product-skeleton {
   border-color: #ebe6de;
   border-radius: 3px;
@@ -1442,6 +1450,7 @@ button {
 }
 
 /* About section and footer */
+
 .about {
   padding: clamp(55px, 7vw, 85px) 7%;
   background:
@@ -1462,6 +1471,7 @@ footer {
 }
 
 /* Refined cart and checkout */
+
 .cart-panel {
   background: #fcfbf8;
 }
@@ -1487,6 +1497,7 @@ footer {
 }
 
 /* Responsive refinements */
+
 @media (max-width: 680px) {
   .navbar {
     min-height: 66px;
@@ -1542,5 +1553,347 @@ footer {
   .product-image img,
   .navbar nav a::after {
     transition: none;
+  }
+}
+
+/* =========================================
+   PRODUCT DETAILS MODAL
+========================================= */
+
+/* Make the image and product information clickable
+   without showing the browser's default button style. */
+
+.product-detail-trigger {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.product-detail-trigger:focus-visible {
+  outline: 3px solid #c39a6b;
+  outline-offset: -3px;
+}
+
+.product-detail-trigger .product-info {
+  display: block;
+}
+
+/* Product card action */
+
+.product-card-actions {
+  padding: 0 16px 17px;
+}
+
+.product-card-actions button {
+  width: 100%;
+  min-height: 44px;
+  padding: 12px;
+  border: 1px solid #17283d;
+  border-radius: 2px;
+  background: #17283d;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  transition:
+    background-color 0.22s ease,
+    color 0.22s ease,
+    border-color 0.22s ease,
+    transform 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.product-card-actions button:hover {
+  border-color: #a47a50;
+  background: #a47a50;
+  box-shadow: 0 5px 14px rgba(23, 40, 61, 0.1);
+}
+
+/* Full-screen modal backdrop */
+
+.product-detail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+  background: rgba(18, 28, 40, 0.68);
+  backdrop-filter: blur(5px);
+  animation: fadeIn 0.2s ease;
+}
+
+/* Main modal panel */
+
+.product-detail-modal {
+  position: relative;
+  width: min(960px, 100%);
+  max-height: min(880px, calc(100vh - 48px));
+  overflow: auto;
+  border: 1px solid rgba(232, 226, 216, 0.9);
+  border-radius: 4px;
+  background: #fcfbf8;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.24);
+  animation: productDetailEnter 0.24s ease;
+}
+
+/* Close button */
+
+.product-detail-close {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 14px;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(232, 226, 216, 0.95);
+  border-radius: 50%;
+  background: rgba(252, 251, 248, 0.96);
+  color: #17283d;
+  font-size: 27px;
+  line-height: 1;
+  box-shadow: 0 3px 12px rgba(23, 40, 61, 0.08);
+}
+
+.product-detail-close:hover {
+  background: #17283d;
+  color: #fff;
+}
+
+/* Two-column product layout */
+
+.product-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  min-width: 0;
+}
+
+/* Large product image */
+
+.product-detail-image {
+  min-width: 0;
+  min-height: 520px;
+  overflow: hidden;
+  background: #f0ece5;
+}
+
+.product-detail-image img {
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+  object-fit: cover;
+}
+
+/* Product information */
+
+.product-detail-content {
+  min-width: 0;
+  padding: clamp(30px, 4vw, 56px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.product-detail-category {
+  margin: 0 0 15px;
+  color: #a47a50;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  line-height: 1.6;
+  text-transform: uppercase;
+}
+
+.product-detail-content h2 {
+  margin: 0;
+  color: #17283d;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(30px, 3.4vw, 43px);
+  font-weight: 600;
+  line-height: 1.16;
+  letter-spacing: -0.7px;
+  overflow-wrap: anywhere;
+}
+
+.product-detail-price {
+  margin: 19px 0 0;
+  color: #17283d;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.product-detail-divider {
+  width: 100%;
+  height: 1px;
+  margin: 25px 0;
+  border: 0;
+  background: #e8e2d8;
+}
+
+.product-detail-information {
+  width: 100%;
+  margin: 0 0 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.product-detail-information p {
+  margin: 0;
+  color: #62666b;
+  font-size: 13px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.product-detail-information strong {
+  display: block;
+  margin-bottom: 3px;
+  color: #17283d;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+
+/* Choose size / add to bag action */
+
+.product-detail-size-button {
+  width: 100%;
+  min-height: 50px;
+  padding: 15px 18px;
+  border: 1px solid #17283d;
+  border-radius: 2px;
+  background: #17283d;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-align: center;
+}
+
+.product-detail-size-button:hover {
+  border-color: #a47a50;
+  background: #a47a50;
+  box-shadow: 0 7px 18px rgba(164, 122, 80, 0.18);
+}
+
+.product-detail-note {
+  margin: 15px 0 0;
+  color: #77746e;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+/* Modal entrance animation */
+
+@keyframes productDetailEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Product detail modal on mobile */
+
+@media (max-width: 680px) {
+  .product-card-actions {
+    padding: 0 10px 13px;
+  }
+
+  .product-card-actions button {
+    min-height: 40px;
+    padding: 10px 5px;
+    font-size: 9px;
+  }
+
+  .product-detail-backdrop {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .product-detail-modal {
+    width: 100%;
+    max-height: calc(100vh - 24px);
+    margin: auto 0;
+  }
+
+  .product-detail-close {
+    top: 10px;
+    right: 10px;
+    width: 38px;
+    height: 38px;
+    font-size: 24px;
+  }
+
+  .product-detail-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .product-detail-image {
+    min-height: 0;
+    max-height: 38vh;
+    aspect-ratio: 4 / 3;
+  }
+
+  .product-detail-image img {
+    min-height: 0;
+    max-height: 38vh;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+  }
+
+  .product-detail-content {
+    padding: 25px 22px 24px;
+  }
+
+  .product-detail-category {
+    margin-bottom: 9px;
+    font-size: 9px;
+  }
+
+  .product-detail-content h2 {
+    padding-right: 25px;
+    font-size: clamp(28px, 8vw, 36px);
+  }
+
+  .product-detail-price {
+    margin-top: 12px;
+    font-size: 20px;
+  }
+
+  .product-detail-divider {
+    margin: 18px 0;
+  }
+
+  .product-detail-information {
+    margin-bottom: 20px;
+    gap: 10px;
+  }
+}
+
+/* Respect reduced-motion settings in the modal. */
+
+@media (prefers-reduced-motion: reduce) {
+  .product-detail-modal {
+    animation: none;
   }
 }

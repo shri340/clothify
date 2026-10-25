@@ -2,9 +2,12 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
 
-const API_BASE_URL =
+const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||
-  "https://clothify-backend-api.onrender.com";
+  "https://clothify-backend-api.onrender.com"
+).replace(/\/+$/, "");
+
+const PRODUCT_LOAD_TIMEOUT_MS = 60000;
 
 type Product = {
   id: number;
@@ -51,13 +54,22 @@ function App() {
         }
       >;
 
-      return parsed.map((item) => ({
-        product: item.product,
-        quantity: item.quantity,
-        size: CLOTHING_SIZES.includes(item.size as ClothingSize)
-          ? (item.size as ClothingSize)
-          : "M",
-      }));
+      return parsed
+        .filter(
+          (item) =>
+            item.product &&
+            typeof item.product.id === "number" &&
+            typeof item.product.name === "string" &&
+            typeof item.product.price === "number" &&
+            typeof item.quantity === "number"
+        )
+        .map((item) => ({
+          product: item.product,
+          quantity: Math.max(1, item.quantity),
+          size: CLOTHING_SIZES.includes(item.size as ClothingSize)
+            ? (item.size as ClothingSize)
+            : "M",
+        }));
     } catch {
       return [];
     }
@@ -81,54 +93,127 @@ function App() {
   const [selectedProduct, setSelectedProduct] =
     useState<Product | null>(null);
 
+  const [selectedDetailProduct, setSelectedDetailProduct] =
+    useState<Product | null>(null);
+
   const [selectedSize, setSelectedSize] =
     useState<ClothingSize>("M");
 
   const checkoutRef = useRef<HTMLDivElement>(null);
 
-  // Load products with a timeout and retry support.
+  // Load products with a longer timeout and safe retry handling.
   useEffect(() => {
     const controller = new AbortController();
+    let isCurrentRequest = true;
+    let timedOut = false;
 
     const timeoutId = window.setTimeout(() => {
+      timedOut = true;
       controller.abort();
-    }, 30000);
+    }, PRODUCT_LOAD_TIMEOUT_MS);
 
-    setLoading(true);
-    setError("");
+    const loadProducts = async () => {
+      setLoading(true);
+      setError("");
 
-    fetch(`${API_BASE_URL}/api/products`, {
-      signal: controller.signal,
-    })
-      .then((response) => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/products`, {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+          signal: controller.signal,
+          cache: "no-store",
+        });
+
         if (!response.ok) {
           throw new Error(
-            `Request failed (HTTP ${response.status})`
+            `The products service returned HTTP ${response.status}.`
           );
         }
 
-        return response.json() as Promise<Product[]>;
-      })
-      .then((data) => {
-        setProducts(data);
-      })
-      .catch((err: unknown) => {
+        const data: unknown = await response.json();
+
+        // Accept either a direct product array or a common wrapped response.
+        let productList: unknown;
+
+        if (Array.isArray(data)) {
+          productList = data;
+        } else if (
+          typeof data === "object" &&
+          data !== null &&
+          "products" in data
+        ) {
+          productList = data.products;
+        } else if (
+          typeof data === "object" &&
+          data !== null &&
+          "data" in data &&
+          Array.isArray(data.data)
+        ) {
+          productList = data.data;
+        } else {
+          throw new Error(
+            "The products service returned an unexpected response."
+          );
+        }
+
+        if (!Array.isArray(productList)) {
+          throw new Error(
+            "The products service did not return a product list."
+          );
+        }
+
+        const validProducts = productList.filter(
+          (item): item is Product =>
+            typeof item === "object" &&
+            item !== null &&
+            typeof item.id === "number" &&
+            typeof item.name === "string" &&
+            typeof item.price === "number" &&
+            typeof item.category === "string" &&
+            typeof item.image === "string"
+        );
+
+        if (productList.length > 0 && validProducts.length === 0) {
+          throw new Error(
+            "Products were received, but their data format is invalid."
+          );
+        }
+
+        if (isCurrentRequest) {
+          setProducts(validProducts);
+          setError("");
+        }
+      } catch (err: unknown) {
+        if (!isCurrentRequest) return;
+
         if (err instanceof Error && err.name === "AbortError") {
           setError(
-            "The collection is taking too long to load. Please try again."
+            timedOut
+              ? "The products service is responding slowly. Please try again."
+              : "The product request was cancelled. Please try again."
           );
         } else {
           setError(
-            "Unable to load products. Check your connection and try again."
+            err instanceof Error
+              ? err.message
+              : "Unable to load products. Check your connection and try again."
           );
         }
-      })
-      .finally(() => {
+      } finally {
         window.clearTimeout(timeoutId);
-        setLoading(false);
-      });
+
+        if (isCurrentRequest) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadProducts();
 
     return () => {
+      isCurrentRequest = false;
       window.clearTimeout(timeoutId);
       controller.abort();
     };
@@ -136,7 +221,11 @@ function App() {
 
   // Save the shopping bag between page refreshes.
   useEffect(() => {
-    localStorage.setItem("clothify-cart", JSON.stringify(cart));
+    try {
+      localStorage.setItem("clothify-cart", JSON.stringify(cart));
+    } catch {
+      // The current shopping session continues if storage is unavailable.
+    }
   }, [cart]);
 
   // Scroll to checkout when it opens.
@@ -155,28 +244,41 @@ function App() {
 
   // Filter products using the existing category field.
   const filteredProducts = products.filter((product) => {
+    const category = product.category.toLowerCase();
+
     if (activeCollection === "All") {
       return true;
     }
 
-    const category = product.category.toLowerCase();
-
     if (activeCollection === "Men") {
-      return (
-        category.includes("men") &&
-        !category.includes("women")
-      );
+      return category.includes("men") && !category.includes("women");
     }
 
     return category.includes("women");
   });
 
+  // Open the product details view.
+  const openProductDetails = (product: Product) => {
+    setSelectedDetailProduct(product);
+  };
+
+  // Close the product details view.
+  const closeProductDetails = () => {
+    setSelectedDetailProduct(null);
+  };
+
+  // Open the existing size selector from product details.
+  const openSizeSelector = (product: Product) => {
+    setSelectedDetailProduct(null);
+    setSelectedProduct(product);
+    setSelectedSize("M");
+  };
+
   // Add a product with its selected size.
   const addToCart = (product: Product, size: ClothingSize) => {
     setCart((current) => {
       const existing = current.find(
-        (item) =>
-          item.product.id === product.id && item.size === size
+        (item) => item.product.id === product.id && item.size === size
       );
 
       if (existing) {
@@ -215,8 +317,7 @@ function App() {
   const removeFromCart = (id: number, size: ClothingSize) => {
     setCart((current) =>
       current.filter(
-        (item) =>
-          !(item.product.id === id && item.size === size)
+        (item) => !(item.product.id === id && item.size === size)
       )
     );
   };
@@ -227,8 +328,7 @@ function App() {
   );
 
   const subtotal = cart.reduce(
-    (total, item) =>
-      total + item.product.price * item.quantity,
+    (total, item) => total + item.product.price * item.quantity,
     0
   );
 
@@ -290,13 +390,17 @@ function App() {
         );
       }
 
-      setOrderId(data.orderId);
+      setOrderId(
+        typeof data.orderId === "number" ? data.orderId : null
+      );
+
       setConfirmedTotal(
         typeof data.total === "number" ? data.total : subtotal
       );
+
       setOrderPlaced(true);
       setCart([]);
-    } catch (err) {
+    } catch (err: unknown) {
       setError(
         err instanceof Error
           ? err.message
@@ -380,7 +484,6 @@ function App() {
             )}
           </div>
 
-          {/* Animated product loading skeletons */}
           {loading && (
             <div
               className="product-grid"
@@ -407,11 +510,13 @@ function App() {
 
               <button
                 type="button"
-                onClick={() =>
-                  setLoadAttempt((attempt) => attempt + 1)
-                }
+                disabled={loading}
+                onClick={() => {
+                  setProducts([]);
+                  setLoadAttempt((attempt) => attempt + 1);
+                }}
               >
-                TRY AGAIN
+                {loading ? "LOADING..." : "TRY AGAIN"}
               </button>
             </div>
           )}
@@ -426,29 +531,39 @@ function App() {
             <div className="product-grid">
               {filteredProducts.map((product) => (
                 <article className="product-card" key={product.id}>
-                  <div className="product-image">
-                    <img src={product.image} alt={product.name} />
+                  <button
+                    type="button"
+                    className="product-detail-trigger"
+                    onClick={() => openProductDetails(product)}
+                    aria-label={`View details for ${product.name}`}
+                  >
+                    <div className="product-image">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        loading="lazy"
+                      />
 
-                    <span className="category">
-                      {product.category}
-                    </span>
-                  </div>
+                      <span className="category">
+                        {product.category}
+                      </span>
+                    </div>
 
-                  <div className="product-info">
-                    <h3>{product.name}</h3>
+                    <div className="product-info">
+                      <h3>{product.name}</h3>
 
-                    <p className="price">
-                      {formatPrice(product.price)}
-                    </p>
+                      <p className="price">
+                        {formatPrice(product.price)}
+                      </p>
+                    </div>
+                  </button>
 
+                  <div className="product-card-actions">
                     <button
                       type="button"
-                      onClick={() => {
-                        setSelectedProduct(product);
-                        setSelectedSize("M");
-                      }}
+                      onClick={() => openProductDetails(product)}
                     >
-                      CHOOSE SIZE
+                      VIEW DETAILS
                     </button>
                   </div>
                 </article>
@@ -465,6 +580,91 @@ function App() {
       </main>
 
       <footer>© 2026 CLOTHIFY. YOUR STYLE, YOUR STORY.</footer>
+
+      {/* Product details modal */}
+      {selectedDetailProduct && (
+        <div
+          className="cart-backdrop product-detail-backdrop"
+          onClick={closeProductDetails}
+        >
+          <section
+            className="product-detail-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="product-detail-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="close-cart product-detail-close"
+              onClick={closeProductDetails}
+              aria-label="Close product details"
+            >
+              ×
+            </button>
+
+            <div className="product-detail-layout">
+              <div className="product-detail-image">
+                <img
+                  src={selectedDetailProduct.image}
+                  alt={selectedDetailProduct.name}
+                />
+              </div>
+
+              <div className="product-detail-content">
+                <p className="eyebrow">THE CLOTHIFY EDIT</p>
+
+                <p className="product-detail-category">
+                  {selectedDetailProduct.category}
+                </p>
+
+                <h2 id="product-detail-title">
+                  {selectedDetailProduct.name}
+                </h2>
+
+                <p className="product-detail-price">
+                  {formatPrice(selectedDetailProduct.price)}
+                </p>
+
+                <div className="product-detail-divider" />
+
+                <p className="product-detail-description">
+                  Discover your next everyday favourite. Explore this
+                  piece from the CLOTHIFY collection and choose your
+                  preferred size before adding it to your bag.
+                </p>
+
+                <div className="product-detail-information">
+                  <div>
+                    <span>Collection</span>
+                    <strong>{selectedDetailProduct.category}</strong>
+                  </div>
+
+                  <div>
+                    <span>Product ID</span>
+                    <strong>#{selectedDetailProduct.id}</strong>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="checkout-button product-detail-size-button"
+                  onClick={() =>
+                    openSizeSelector(selectedDetailProduct)
+                  }
+                >
+                  CHOOSE SIZE
+                </button>
+
+                <p className="product-detail-note">
+                  Select your size in the next step before adding
+                  this item to your shopping bag.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* Checkout */}
       {checkoutOpen && (
@@ -500,8 +700,7 @@ function App() {
               )}
 
               <p>
-                Order total:{" "}
-                <strong>{formatPrice(confirmedTotal)}</strong>
+                Order total: <strong>{formatPrice(confirmedTotal)}</strong>
               </p>
 
               <button
@@ -552,9 +751,7 @@ function App() {
                     id="phone"
                     type="tel"
                     value={phone}
-                    onChange={(event) =>
-                      setPhone(event.target.value)
-                    }
+                    onChange={(event) => setPhone(event.target.value)}
                     required
                     pattern="[0-9]{10}"
                     title="Enter a 10-digit phone number"
@@ -566,9 +763,7 @@ function App() {
                   <textarea
                     id="address"
                     value={address}
-                    onChange={(event) =>
-                      setAddress(event.target.value)
-                    }
+                    onChange={(event) => setAddress(event.target.value)}
                     required
                     minLength={10}
                     maxLength={1000}
@@ -681,9 +876,7 @@ function App() {
             <button
               type="button"
               className="checkout-button"
-              onClick={() =>
-                addToCart(selectedProduct, selectedSize)
-              }
+              onClick={() => addToCart(selectedProduct, selectedSize)}
             >
               ADD TO BAG · {selectedSize}
             </button>
@@ -770,9 +963,7 @@ function App() {
                         <button
                           type="button"
                           className="remove-item"
-                          onClick={() =>
-                            removeFromCart(product.id, size)
-                          }
+                          onClick={() => removeFromCart(product.id, size)}
                         >
                           Remove
                         </button>
