@@ -1,5 +1,5 @@
-
 import { useEffect, useRef, useState } from "react";
+import AdminDashboard from "./AdminDashboard";
 import "./App.css";
 
 const API_BASE_URL = (
@@ -37,6 +37,14 @@ type CartItem = {
 };
 
 function App() {
+  if (window.location.pathname === "/admin") {
+    return <AdminDashboard />;
+  }
+
+  return <Storefront />;
+}
+
+function Storefront() {
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCollection, setActiveCollection] =
     useState<CollectionFilter>("All");
@@ -101,7 +109,6 @@ function App() {
 
   const checkoutRef = useRef<HTMLDivElement>(null);
 
-  // Load products with a longer timeout and safe retry handling.
   useEffect(() => {
     const controller = new AbortController();
     let isCurrentRequest = true;
@@ -133,8 +140,6 @@ function App() {
         }
 
         const data: unknown = await response.json();
-
-        // Accept either a direct product array or a common wrapped response.
         let productList: unknown;
 
         if (Array.isArray(data)) {
@@ -257,24 +262,20 @@ function App() {
     return category.includes("women");
   });
 
-  // Open the product details view.
   const openProductDetails = (product: Product) => {
     setSelectedDetailProduct(product);
   };
 
-  // Close the product details view.
   const closeProductDetails = () => {
     setSelectedDetailProduct(null);
   };
 
-  // Open the existing size selector from product details.
   const openSizeSelector = (product: Product) => {
     setSelectedDetailProduct(null);
     setSelectedProduct(product);
     setSelectedSize("M");
   };
 
-  // Add a product with its selected size.
   const addToCart = (product: Product, size: ClothingSize) => {
     setCart((current) => {
       const existing = current.find(
@@ -296,7 +297,6 @@ function App() {
     setCartOpen(true);
   };
 
-  // Change quantity for the specific product and size.
   const changeQuantity = (
     id: number,
     size: ClothingSize,
@@ -313,7 +313,6 @@ function App() {
     );
   };
 
-  // Remove only the selected size from the cart.
   const removeFromCart = (id: number, size: ClothingSize) => {
     setCart((current) =>
       current.filter(
@@ -348,8 +347,7 @@ function App() {
     setOrderId(null);
     setError("");
   };
-
-  // Submit customer and size information to the backend.
+    // Submit customer and size information to the backend.
   const handlePlaceOrder = async (
     event: React.FormEvent<HTMLFormElement>
   ) => {
@@ -580,8 +578,7 @@ function App() {
       </main>
 
       <footer>© 2026 CLOTHIFY. YOUR STYLE, YOUR STORY.</footer>
-
-      {/* Product details modal */}
+            {/* Product details modal */}
       {selectedDetailProduct && (
         <div
           className="cart-backdrop product-detail-backdrop"
@@ -700,7 +697,8 @@ function App() {
               )}
 
               <p>
-                Order total: <strong>{formatPrice(confirmedTotal)}</strong>
+                Order total:{" "}
+                <strong>{formatPrice(confirmedTotal)}</strong>
               </p>
 
               <button
@@ -763,7 +761,9 @@ function App() {
                   <textarea
                     id="address"
                     value={address}
-                    onChange={(event) => setAddress(event.target.value)}
+                    onChange={(event) =>
+                      setAddress(event.target.value)
+                    }
                     required
                     minLength={10}
                     maxLength={1000}
@@ -824,8 +824,7 @@ function App() {
           )}
         </div>
       )}
-
-      {/* Size selection popup */}
+            {/* Size selection popup */}
       {selectedProduct && (
         <div
           className="cart-backdrop size-modal-backdrop"
@@ -848,11 +847,8 @@ function App() {
             </button>
 
             <p className="eyebrow">CLOTHIFY FIT GUIDE</p>
-
             <h2 id="size-modal-title">Choose your size</h2>
-
             <p>{selectedProduct.name}</p>
-
             <p className="price">
               {formatPrice(selectedProduct.price)}
             </p>
@@ -927,7 +923,10 @@ function App() {
                       className="cart-item"
                       key={`${product.id}-${size}`}
                     >
-                      <img src={product.image} alt={product.name} />
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                      />
 
                       <div className="cart-item-details">
                         <h3>{product.name}</h3>
@@ -963,7 +962,9 @@ function App() {
                         <button
                           type="button"
                           className="remove-item"
-                          onClick={() => removeFromCart(product.id, size)}
+                          onClick={() =>
+                            removeFromCart(product.id, size)
+                          }
                         >
                           Remove
                         </button>
@@ -982,7 +983,9 @@ function App() {
                     <strong>{formatPrice(subtotal)}</strong>
                   </div>
 
-                  <p>Shipping and taxes calculated at checkout.</p>
+                  <p>
+                    Shipping and taxes calculated at checkout.
+                  </p>
 
                   <button
                     type="button"
