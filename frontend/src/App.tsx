@@ -14,6 +14,8 @@ type Product = {
   image: string;
 };
 
+type CollectionFilter = "All" | "Men" | "Women";
+
 type ClothingSize = "XS" | "S" | "M" | "L" | "XL" | "XXL";
 
 const CLOTHING_SIZES: ClothingSize[] = [
@@ -33,6 +35,8 @@ type CartItem = {
 
 function App() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [activeCollection, setActiveCollection] =
+    useState<CollectionFilter>("All");
 
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
@@ -61,6 +65,8 @@ function App() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
+
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
@@ -80,22 +86,53 @@ function App() {
 
   const checkoutRef = useRef<HTMLDivElement>(null);
 
-  // Load products from the backend.
+  // Load products with a timeout and retry support.
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/products`)
+    const controller = new AbortController();
+
+    const timeoutId = window.setTimeout(() => {
+      controller.abort();
+    }, 30000);
+
+    setLoading(true);
+    setError("");
+
+    fetch(`${API_BASE_URL}/api/products`, {
+      signal: controller.signal,
+    })
       .then((response) => {
         if (!response.ok) {
-          throw new Error("Could not load products");
+          throw new Error(
+            `Request failed (HTTP ${response.status})`
+          );
         }
 
-        return response.json();
+        return response.json() as Promise<Product[]>;
       })
-      .then((data: Product[]) => setProducts(data))
-      .catch(() => {
-        setError("Unable to load products. Please try again later.");
+      .then((data) => {
+        setProducts(data);
       })
-      .finally(() => setLoading(false));
-  }, []);
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") {
+          setError(
+            "The collection is taking too long to load. Please try again."
+          );
+        } else {
+          setError(
+            "Unable to load products. Check your connection and try again."
+          );
+        }
+      })
+      .finally(() => {
+        window.clearTimeout(timeoutId);
+        setLoading(false);
+      });
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [loadAttempt]);
 
   // Save the shopping bag between page refreshes.
   useEffect(() => {
@@ -115,6 +152,24 @@ function App() {
       return () => window.clearTimeout(timer);
     }
   }, [checkoutOpen]);
+
+  // Filter products using the existing category field.
+  const filteredProducts = products.filter((product) => {
+    if (activeCollection === "All") {
+      return true;
+    }
+
+    const category = product.category.toLowerCase();
+
+    if (activeCollection === "Men") {
+      return (
+        category.includes("men") &&
+        !category.includes("women")
+      );
+    }
+
+    return category.includes("women");
+  });
 
   // Add a product with its selected size.
   const addToCart = (product: Product, size: ClothingSize) => {
@@ -259,7 +314,7 @@ function App() {
           CLOTHIFY<span>.</span>
         </a>
 
-        <nav>
+        <nav aria-label="Main navigation">
           <a href="#products">Shop</a>
           <a href="#about">About</a>
         </nav>
@@ -297,23 +352,83 @@ function App() {
               <h2>Featured products</h2>
             </div>
 
-            <span>{products.length} products</span>
+            <span>
+              {loading
+                ? "Loading..."
+                : `${filteredProducts.length} products`}
+            </span>
           </div>
 
-          {loading && <p>Loading your collection...</p>}
+          <div
+            className="collection-filters"
+            aria-label="Product collections"
+          >
+            {(["All", "Men", "Women"] as CollectionFilter[]).map(
+              (collection) => (
+                <button
+                  key={collection}
+                  type="button"
+                  className={`collection-filter${
+                    activeCollection === collection ? " active" : ""
+                  }`}
+                  aria-pressed={activeCollection === collection}
+                  onClick={() => setActiveCollection(collection)}
+                >
+                  {collection === "All" ? "All Products" : collection}
+                </button>
+              )
+            )}
+          </div>
+
+          {/* Animated product loading skeletons */}
+          {loading && (
+            <div
+              className="product-grid"
+              aria-label="Loading products"
+              aria-busy="true"
+            >
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div className="product-skeleton" key={index}>
+                  <div className="skeleton-image" />
+
+                  <div className="skeleton-info">
+                    <div className="skeleton-line skeleton-title" />
+                    <div className="skeleton-line skeleton-price" />
+                    <div className="skeleton-line skeleton-button" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {error && !checkoutOpen && (
-            <p role="alert" className="error">
-              {error}
+            <div className="error" role="alert">
+              <p>{error}</p>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setLoadAttempt((attempt) => attempt + 1)
+                }
+              >
+                TRY AGAIN
+              </button>
+            </div>
+          )}
+
+          {!loading && !error && filteredProducts.length === 0 && (
+            <p role="status">
+              No products found in this collection yet.
             </p>
           )}
 
-          {!loading && !error && (
+          {!loading && !error && filteredProducts.length > 0 && (
             <div className="product-grid">
-              {products.map((product) => (
+              {filteredProducts.map((product) => (
                 <article className="product-card" key={product.id}>
                   <div className="product-image">
                     <img src={product.image} alt={product.name} />
+
                     <span className="category">
                       {product.category}
                     </span>
