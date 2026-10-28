@@ -1260,18 +1260,36 @@ button {
 }
 
 .hero::after {
-  position: absolute;
-  z-index: -1;
-  top: 12%;
-  right: 7%;
-  width: clamp(150px, 22vw, 300px);
-  aspect-ratio: 1;
-  border: 1px solid rgba(164, 122, 80, 0.2);
-  border-radius: 50%;
-  content: "";
-  pointer-events: none;
+  display: none;
+}
+/* Refined premium hero */
+.hero {
+  background:
+    radial-gradient(
+      ellipse at 90% 10%,
+      rgba(211, 190, 160, 0.22),
+      transparent 42%
+    ),
+    linear-gradient(
+      120deg,
+      #f4eee5 0%,
+      #fcfaf6 58%,
+      #f0e7da 100%
+    );
 }
 
+.hero .eyebrow {
+  margin-bottom: 22px;
+}
+
+.hero h1 {
+  max-width: 780px;
+  text-wrap: balance;
+}
+
+.hero > p:not(.eyebrow) {
+  margin-top: 24px;
+}
 .hero .eyebrow {
   letter-spacing: 3px;
 }
@@ -1895,5 +1913,129 @@ footer {
 @media (prefers-reduced-motion: reduce) {
   .product-detail-modal {
     animation: none;
+  }
+}
+
+/* CLOTHIFY — Premium editorial hero layout */
+
+.hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  align-items: center;
+  gap: clamp(24px, 4vw, 64px);
+  min-height: 590px;
+  padding: 64px clamp(24px, 7vw, 110px);
+  overflow: hidden;
+  background:
+    radial-gradient(
+      ellipse at 85% 20%,
+      rgba(211, 190, 160, 0.3),
+      transparent 42%
+    ),
+    linear-gradient(120deg, #f4eee5, #fcfaf6 58%, #f0e7da);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.hero .eyebrow {
+  margin-bottom: 22px;
+  letter-spacing: 3px;
+}
+
+.hero h1 {
+  max-width: 600px;
+  font-size: clamp(44px, 5.3vw, 76px);
+  line-height: 1.06;
+  letter-spacing: -2px;
+}
+
+.hero > .hero-content > p:not(.eyebrow) {
+  max-width: 440px;
+  margin: 22px 0 28px;
+  font-size: clamp(14px, 1.4vw, 17px);
+  line-height: 1.8;
+}
+
+.hero .shop-button {
+  gap: 14px;
+}
+
+.hero-visual {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  height: clamp(360px, 39vw, 510px);
+  overflow: hidden;
+  background: #e9ddcc;
+}
+
+.hero-visual img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: transform 0.7s ease;
+}
+
+.hero-visual:hover img {
+  transform: scale(1.025);
+}
+
+/* Tablet layout */
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+    gap: 24px;
+    min-height: 480px;
+    padding: 50px 5%;
+  }
+
+  .hero h1 {
+    font-size: clamp(40px, 6vw, 58px);
+    letter-spacing: -1.5px;
+  }
+
+  .hero-visual {
+    height: 380px;
+  }
+}
+
+/* Mobile layout */
+@media (max-width: 680px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 30px;
+    min-height: auto;
+    padding: 52px 6% 38px;
+  }
+
+  .hero h1 {
+    max-width: 100%;
+    font-size: clamp(43px, 11vw, 62px);
+    line-height: 1.05;
+    letter-spacing: -1.4px;
+  }
+
+  .hero > .hero-content > p:not(.eyebrow) {
+    max-width: 360px;
+    margin: 18px 0 24px;
+    font-size: 14px;
+  }
+
+  .hero-visual {
+    height: auto;
+    aspect-ratio: 4 / 3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-visual img {
+    transition: none;
   }
 }

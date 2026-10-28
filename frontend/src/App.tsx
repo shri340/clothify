@@ -431,21 +431,33 @@ function Storefront() {
       </header>
 
       <main>
-        <section className="hero">
-          <p className="eyebrow">YOUR STYLE, YOUR STORY</p>
+       
+<section className="hero">
+  <div className="hero-content">
+    <p className="eyebrow">YOUR STYLE, YOUR STORY</p>
 
-          <h1>
-            Wear what
-            <br />
-            moves you.
-          </h1>
+    <h1>
+      Wear what
+      <br />
+      moves you.
+    </h1>
 
-          <p>Everyday essentials. Effortless style.</p>
+    <p>Everyday essentials. Effortless style.</p>
 
-          <a className="shop-button" href="#products">
-            EXPLORE COLLECTION
-          </a>
-        </section>
+    <a className="shop-button" href="#products">
+      EXPLORE COLLECTION <span aria-hidden="true">→</span>
+    </a>
+  </div>
+
+  <div className="hero-visual">
+    <img
+      src="/clothify-hero.png"
+      alt="Male and female models showcasing Clothify fashion"
+      fetchPriority="high"
+    />
+  </div>
+</section>
+
 
         <section className="products-section" id="products">
           <div className="section-heading">
