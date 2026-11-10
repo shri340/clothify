@@ -6,10 +6,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashSet;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
+
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "*")
+
 public class OrderController {
 
     private final CustomerOrderRepository orderRepository;
@@ -43,8 +44,11 @@ public class OrderController {
                     Map.entry(14, 1099)
             );
 
-    private static final Set<String> VALID_SIZES =
-            Set.of("XS", "S", "M", "L", "XL", "XXL");
+   private static final Set<String> CLOTHING_SIZES =
+        Set.of("S", "M", "L", "XL");
+
+private static final Set<String> SHOE_SIZES =
+        Set.of("7", "8", "9", "10", "11");
 
     public OrderController(CustomerOrderRepository orderRepository) {
         this.orderRepository = orderRepository;
@@ -63,13 +67,39 @@ public class OrderController {
         String phone = readText(request.get("phone"));
         String address = readText(request.get("address"));
 
-        if (name.isBlank() || phone.isBlank() || address.isBlank()) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of(
-                            "message",
-                            "Name, phone, and address are required."
-                    ));
-        }
+        
+if (name.isBlank() || phone.isBlank() || address.isBlank()) {
+    return ResponseEntity.badRequest()
+            .body(Map.of(
+                    "message",
+                    "Name, phone, and address are required."
+            ));
+}
+
+if (name.length() < 2 || name.length() > 200) {
+    return ResponseEntity.badRequest()
+            .body(Map.of(
+                    "message",
+                    "Name must be between 2 and 200 characters."
+            ));
+}
+
+if (!phone.matches("[0-9]{10}")) {
+    return ResponseEntity.badRequest()
+            .body(Map.of(
+                    "message",
+                    "Phone number must contain exactly 10 digits."
+            ));
+}
+
+if (address.length() < 10 || address.length() > 1000) {
+    return ResponseEntity.badRequest()
+            .body(Map.of(
+                    "message",
+                    "Address must be between 10 and 1000 characters."
+            ));
+}
+
 
         Object itemsObject = request.get("items");
 
@@ -77,9 +107,14 @@ public class OrderController {
             return ResponseEntity.badRequest()
                     .body(Map.of("message", "Your cart is empty."));
         }
+        if (items.size() > 50) {
+    return ResponseEntity.badRequest()
+            .body(Map.of("message", "An order cannot contain more than 50 items."));
+}
 
-        int total = 0;
-        List<Map<String, Object>> savedItems = new ArrayList<>();
+      int total = 0;
+List<Map<String, Object>> savedItems = new ArrayList<>();
+Set<Integer> seenProductIds = new HashSet<>();
 
         try {
             for (Object itemObject : items) {
@@ -90,6 +125,13 @@ public class OrderController {
 
                 int id = Integer.parseInt(
                         String.valueOf(item.get("id")));
+                        if (!seenProductIds.add(id)) {
+    return ResponseEntity.badRequest()
+            .body(Map.of(
+                    "message",
+                    "Duplicate products are not allowed in an order."
+            ));
+}
 
                 int quantity = Integer.parseInt(
                         String.valueOf(item.get("quantity")));
@@ -112,15 +154,18 @@ public class OrderController {
                             ));
                 }
 
-                String size = readText(item.get("size")).toUpperCase();
+               String size = readText(item.get("size")).toUpperCase();
 
-                if (!VALID_SIZES.contains(size)) {
-                    return ResponseEntity.badRequest()
-                            .body(Map.of(
-                                    "message",
-                                    "A valid clothing size is required."
-                            ));
-                }
+Set<String> allowedSizes =
+        id == 10 ? SHOE_SIZES : CLOTHING_SIZES;
+
+if (!allowedSizes.contains(size)) {
+    return ResponseEntity.badRequest()
+            .body(Map.of(
+                    "message",
+                    "Invalid size for the selected product."
+            ));
+}
 
                 total = Math.addExact(
                         total,
